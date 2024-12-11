@@ -118,8 +118,7 @@ function updateTable(forecastData) {
 
         tbody.append(`
             <tr class="${rowClass}">
-                <td>${date}</td>
-                <td>${time}</td>
+                <td>${date} ${time}</td>
                 <td>${temperature}</td>
                 <td>${description}</td>
             </tr>
