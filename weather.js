@@ -2,92 +2,83 @@ const apiKey = 'f4f5083996d37b0f6c01a5068acdc831'; // Your API key
 const baseUrl = 'https://api.openweathermap.org/data/2.5/forecast';
 
 function setActiveButton(buttonId, parentGroupId) {
-    // Set the selected button as active (blue) and reset siblings to inactive (default gray)
+    // Make the selected button blue and reset siblings to default
     $(`#${parentGroupId} .btn`).removeClass("btn-primary").addClass("btn-secondary");
     $(`#${buttonId}`).removeClass("btn-secondary").addClass("btn-primary");
 }
 
 function resetChildButtons(parentGroupId) {
-    // Reset all child buttons in the specified parent group to inactive (default gray)
+    // Reset buttons in the lower group
     $(`#${parentGroupId} .btn`).removeClass("btn-primary").addClass("btn-secondary");
 }
 
 $(document).ready(function () {
-    const detailsBox = $("#weatherDetails"); // Reference to the details display box
+    const detailsBox = $("#weatherDetails");
 
-    // Button click handlers
     $("#getForecastBtn").click(() => {
-        fetchWeatherData(); // Fetch weather data when this button is clicked
-        setActiveButton("getForecastBtn", "input-group"); // Set this button as active
-        resetChildButtons("displayButtons"); // Reset display button states
+        fetchWeatherData();
+        setActiveButton("getForecastBtn", "input-group");
+        resetChildButtons("displayButtons");
     });
 
     $("#showTableBtn").click(() => {
-        // Show the forecast table, hide chart and other elements
         $("#forecastTable").show();
         $("#forecastChart").hide();
         $("#chartFilterButtons").hide();
-        setActiveButton("showTableBtn", "displayButtons"); // Set this button as active
-        resetChildButtons("chartFilterButtons"); // Reset chart filter buttons
+        setActiveButton("showTableBtn", "displayButtons");
+        resetChildButtons("chartFilterButtons");
         $("#intervalButtons").hide();
         detailsBox.hide();
     });
 
     $("#showChartBtn").click(() => {
-        // Show chart-related elements, hide table and unnecessary elements
         $("#forecastTable").hide();
         $("#forecastChart").hide();
         $("#chartFilterButtons").show();
         $("#dayButtons").hide();
         $("#intervalButtons").hide();
-        setActiveButton("showChartBtn", "displayButtons"); // Set this button as active
-        resetChildButtons("chartFilterButtons"); // Reset chart filter buttons
+        setActiveButton("showChartBtn", "displayButtons");
+        resetChildButtons("chartFilterButtons");
     });
 
     $("#show5DayChartBtn").click(() => {
-        // Show 5-day chart view
         updateChart(forecastData, '5-day');
         $("#dayButtons").hide();
         $("#intervalButtons").hide();
-        $("#forecastChart").show(); // Display the chart
-        setActiveButton("show5DayChartBtn", "chartFilterButtons"); // Set this button as active
-        resetChildButtons("dayButtons"); // Reset day buttons
+        $("#forecastChart").show(); // Show the chart after updating it
+        setActiveButton("show5DayChartBtn", "chartFilterButtons");
+        resetChildButtons("dayButtons");
         detailsBox.hide();
     });
 
     $("#showDailyChartBtn").click(() => {
-        // Show daily chart view with day buttons for selection
         populateDayButtons(forecastData);
         $("#dayButtons").show();
         $("#intervalButtons").hide();
         $("#forecastChart").hide();
-        setActiveButton("showDailyChartBtn", "chartFilterButtons"); // Set this button as active
-        resetChildButtons("intervalButtons"); // Reset interval buttons
+        setActiveButton("showDailyChartBtn", "chartFilterButtons");
+        resetChildButtons("intervalButtons");
         detailsBox.hide();
     });
 });
 
-let forecastData = []; // To store fetched weather forecast data
+let forecastData = [];
 
 function fetchWeatherData() {
-    const city = $("#cityInput").val().trim(); // Get user input for city name
+    const city = $("#cityInput").val().trim();
     if (!city) {
-        alert("Please enter a city name."); // Alert if city name is empty
+        alert("Please enter a city name.");
         return;
     }
 
-    // Make an API request to fetch weather data
     $.ajax({
         url: `${baseUrl}?q=${city}&appid=${apiKey}&units=metric`,
         method: "GET",
         success: (response) => {
-            // Filter data to include only specific times and limit to 5 days
             forecastData = response.list.filter((data) => {
                 const time = new Date(data.dt_txt).getHours();
                 return time === 0 || time === 3 || time === 6 || time === 9 || time === 12 || time === 15 || time === 18 || time === 21;
-            }).slice(0, 40);
-
-            // Update table and chart with the fetched data
+            }).slice(0, 40); // Get 5 days (8 intervals per day)
             updateTable(forecastData);
             updateChart(forecastData, '5-day');
             $("#forecastTable").show();
@@ -96,7 +87,6 @@ function fetchWeatherData() {
             $("#chartFilterButtons").hide();
         },
         error: (error) => {
-            // Handle errors such as invalid city name or network issues
             alert("Unable to fetch weather data. Please check the city name.");
             $("#forecastTable").hide();
             $("#forecastChart").hide();
@@ -108,27 +98,24 @@ function fetchWeatherData() {
 }
 
 function updateTable(forecastData) {
-    const tbody = $("#forecastTable tbody"); // Reference to table body
-    tbody.empty(); // Clear existing rows
+    const tbody = $("#forecastTable tbody");
+    tbody.empty(); // Clear previous rows
 
-    let currentDay = ''; // To track the current day for alternating row colors
+    let currentDay = '';
     let rowClass = 'table-green';
 
     forecastData.forEach((data) => {
-        // Extract date, time, temperature, and description from data
         const dateTime = data.dt_txt.split(" ");
         const date = dateTime[0];
         const time = dateTime[1];
         const temperature = data.main.temp.toFixed(1);
         const description = data.weather[0].description;
 
-        // Alternate row colors based on the date
         if (date !== currentDay) {
             currentDay = date;
-            rowClass = rowClass === 'table-green' ? 'table-grey' : 'table-green';
+            rowClass = rowClass === 'table-green' ? 'table-grey' : 'table-green'; // Alternate row colors
         }
 
-        // Append row to the table
         tbody.append(`
             <tr class="${rowClass}">
                 <td>${date} ${time}</td>
@@ -138,40 +125,37 @@ function updateTable(forecastData) {
         `);
     });
 
-    $("#forecastTable").show(); // Show the table
+    $("#forecastTable").show();
 }
 
 function updateChart(forecastData, view, selectedDay = null) {
-    const ctx = document.getElementById("forecastChart").getContext("2d"); // Get chart context
+    const ctx = document.getElementById("forecastChart").getContext("2d");
 
     let labels, temperatures, tooltipData;
 
     if (view === '5-day') {
-        // Generate labels and data for 5-day view
         labels = forecastData.map((data) => {
             const date = new Date(data.dt_txt);
             const time = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
             const day = date.toLocaleDateString([], { day: '2-digit', month: 'short', year: '2-digit' });
             return `${time} ${day}`;
-        });
+        }); // Use formatted time and date for labels
         temperatures = forecastData.map((data) => data.main.temp.toFixed(1));
-        tooltipData = forecastData.map((data) => data.dt_txt);
+        tooltipData = forecastData.map((data) => data.dt_txt); // Full datetime for tooltips
     } else if (view === 'daily' && selectedDay) {
-        // Generate labels and data for selected daily view
         const dailyData = forecastData.filter((data) => data.dt_txt.startsWith(selectedDay));
         labels = dailyData.map((data) => {
             const time = new Date(data.dt_txt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
             return time;
-        });
+        }); // Use formatted time for labels
         temperatures = dailyData.map((data) => data.main.temp.toFixed(1));
-        tooltipData = dailyData.map((data) => data.dt_txt);
+        tooltipData = dailyData.map((data) => data.dt_txt); // Full datetime for tooltips
     }
 
     if (window.weatherChart) {
-        window.weatherChart.destroy(); // Destroy the previous chart instance
+        window.weatherChart.destroy();
     }
 
-    // Create a new chart instance
     window.weatherChart = new Chart(ctx, {
         type: "line",
         data: {
@@ -192,7 +176,7 @@ function updateChart(forecastData, view, selectedDay = null) {
             scales: {
                 x: {
                     ticks: {
-                        color: 'black', // Style x-axis labels
+                        color: 'black', // Set the color of the x-axis labels to black
                         callback: function(value, index, values) {
                             return labels[index];
                         },
@@ -202,18 +186,18 @@ function updateChart(forecastData, view, selectedDay = null) {
                     title: {
                         display: true,
                         text: 'Time and Date',
-                        color: 'black' // Style x-axis title
+                        color: 'black' // Set the color of the x-axis title to black
                     }
                 },
                 y: {
                     ticks: {
-                        color: 'black', // Style y-axis labels
+                        color: 'black', // Set the color of the y-axis labels to black
                     },
                     display: true,
                     title: {
                         display: true,
                         text: 'Temperature (°C)',
-                        color: 'black' // Style y-axis title
+                        color: 'black' // Set the color of the y-axis title to black
                     }
                 }
             },
@@ -222,57 +206,54 @@ function updateChart(forecastData, view, selectedDay = null) {
                     callbacks: {
                         title: function(tooltipItems, data) {
                             const index = tooltipItems[0].dataIndex;
-                            return tooltipData[index]; // Display full datetime in tooltip
+                            return tooltipData[index]; // Show full datetime in tooltip
                         },
                     },
                 },
                 legend: {
                     labels: {
-                        color: 'black' // Style legend labels
+                        color: 'black' // Set the color of the legend labels to black
                     }
                 },
                 zoom: {
                     pan: {
                         enabled: true,
-                        mode: 'x', // Enable panning horizontally
+                        mode: 'x',
                     },
                     zoom: {
                         enabled: true,
-                        mode: 'x', // Enable zooming horizontally
+                        mode: 'x',
                     },
                 },
             },
         },
     });
 
-    $("#forecastChart").show(); // Show the chart
+    $("#forecastChart").show();
 }
 
 function populateDayButtons(forecastData) {
-    const uniqueDays = [...new Set(forecastData.map((data) => data.dt_txt.split(" ")[0]))]; // Get unique dates
-    const dayButtons = $("#dayButtons"); // Reference to day buttons container
-    dayButtons.empty(); // Clear existing buttons
-
+    const uniqueDays = [...new Set(forecastData.map((data) => data.dt_txt.split(" ")[0]))];
+    const dayButtons = $("#dayButtons");
+    dayButtons.empty();
     uniqueDays.forEach((day, index) => {
-        // Add a button for each unique day
         dayButtons.append(`<button class="btn btn-secondary day-btn" id="day-${day}" data-day="${day}">${day}</button>`);
         if (index === 0) {
-            setActiveButton(`day-${day}`, "dayButtons"); // Set the first button as active
+            setActiveButton(`day-${day}`, "dayButtons");
         }
     });
 
     $(".day-btn").click(function () {
-        // Handle day button click
         const selectedDay = $(this).data("day");
-        updateChart(forecastData, 'daily', selectedDay); // Update chart for selected day
-        populateIntervalButtons(forecastData, selectedDay); // Populate interval buttons
+        updateChart(forecastData, 'daily', selectedDay);
+        populateIntervalButtons(forecastData, selectedDay);
         $("#intervalButtons").show();
         $("#forecastChart").show();
-        setActiveButton($(this).attr("id"), "dayButtons"); // Set clicked button as active
+        setActiveButton($(this).attr("id"), "dayButtons");
         resetChildButtons("intervalButtons");
     });
 
-    // Automatically select and display data for the first day
+    // Automatically select and display the first day's data
     if (uniqueDays.length > 0) {
         const firstDay = uniqueDays[0];
         updateChart(forecastData, 'daily', firstDay);
@@ -282,12 +263,10 @@ function populateDayButtons(forecastData) {
 }
 
 function populateIntervalButtons(forecastData, selectedDay) {
-    const dailyData = forecastData.filter((data) => data.dt_txt.startsWith(selectedDay)); // Get data for the selected day
-    const intervalButtons = $("#intervalButtons"); // Reference to interval buttons container
-    intervalButtons.empty(); // Clear existing buttons
-
+    const dailyData = forecastData.filter((data) => data.dt_txt.startsWith(selectedDay));
+    const intervalButtons = $("#intervalButtons");
+    intervalButtons.empty();
     dailyData.forEach((data) => {
-        // Add a button for each interval in the selected day
         const time = new Date(data.dt_txt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
         const icon = data.weather[0].icon;
         intervalButtons.append(`
@@ -297,30 +276,28 @@ function populateIntervalButtons(forecastData, selectedDay) {
         `);
     });
 
-    // Automatically select and display details for the first interval
+    // Automatically select and display the first interval's data
     if (dailyData.length > 0) {
         const firstInterval = dailyData[0];
-        displayWeatherDetails(firstInterval); // Show details for the first interval
-        setActiveButton(`time-${firstInterval.dt_txt}`, "intervalButtons"); // Set the first interval as active
+        displayWeatherDetails(firstInterval);
+        setActiveButton(`time-${firstInterval.dt_txt}`, "intervalButtons");
     }
 
     $(".time-btn").click(function () {
-        // Handle interval button click
         const selectedTime = $(this).data("time");
         const selectedData = forecastData.find((data) => data.dt_txt === selectedTime);
-        displayWeatherDetails(selectedData); // Show details for the selected interval
-        setActiveButton($(this).attr("id"), "intervalButtons"); // Set clicked button as active
+        displayWeatherDetails(selectedData);
+        setActiveButton($(this).attr("id"), "intervalButtons");
     });
 }
 
 function displayWeatherDetails(data) {
-    const detailsBox = $("#weatherDetails"); // Reference to the details display box
-    // Populate and display weather details
+    const detailsBox = $("#weatherDetails");
     detailsBox.html(`
         <p><strong>Date:</strong> ${data.dt_txt.split(" ")[0]}</p>
         <p><strong>Time:</strong> ${new Date(data.dt_txt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true })}</p>
         <p><strong>Temperature:</strong> ${data.main.temp.toFixed(1)} °C</p>
         <p><strong>Weather Description:</strong> ${data.weather[0].description}</p>
     `);
-    detailsBox.show(); // Show the details box
+    detailsBox.show();
 }
